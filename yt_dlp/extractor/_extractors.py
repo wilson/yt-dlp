@@ -1675,6 +1675,7 @@ from .rai import (
     RaiPlaySoundPlaylistIE,
     RaiSudtirolIE,
 )
+from .rallytv import RallyTVIE
 from .raywenderlich import (
     RayWenderlichCourseIE,
     RayWenderlichIE,
