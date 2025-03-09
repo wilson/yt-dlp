@@ -15,7 +15,7 @@ from devscripts import install_deps
 class TestInstallDeps(unittest.TestCase):
 
     def setUp(self):
-        """Set up test fixtures, if any."""
+        """Set up test fixtures."""
         # Common project data with standard dependencies
         self.standard_project_data = {
             'project': {
@@ -52,6 +52,17 @@ class TestInstallDeps(unittest.TestCase):
                     'default': ['opt1'],
                     'test': ['test1', 'yt-dlp[dev]'],  # test depends on dev
                     'dev': ['dev1', 'dev2'],
+                },
+            },
+        }
+
+        # Simple project data for custom input file test
+        self.custom_input_project_data = {
+            'project': {
+                'name': 'yt-dlp',
+                'dependencies': ['dep1'],
+                'optional-dependencies': {
+                    'default': ['opt1'],
                 },
             },
         }
@@ -403,26 +414,21 @@ class TestInstallDeps(unittest.TestCase):
 
     @mock.patch('devscripts.install_deps.parse_toml')
     @mock.patch('devscripts.install_deps.read_file')
-    def test_custom_input_file(self, mock_read_file, mock_parse_toml):
+    @mock.patch('devscripts.install_deps.subprocess.call')
+    def test_custom_input_file(self, mock_call, mock_read_file, mock_parse_toml):
         """Test specifying a custom input file."""
         custom_path = '/custom/path/pyproject.toml'
-        mock_parse_toml.return_value = {
-            'project': {
-                'name': 'yt-dlp',
-                'dependencies': ['dep1'],
-                'optional-dependencies': {
-                    'default': ['opt1'],
-                },
-            },
-        }
 
-        # Test with custom input file and --print
-        with mock.patch('sys.argv', ['install_deps.py', custom_path, '--print']):
-            with self.capture_output() as (_, _):
-                install_deps.main()
+        # Use the run_with_argv_and_capture helper with custom arguments
+        _, _ = self.run_with_argv_and_capture(
+            ['install_deps.py', custom_path, '--print'],
+            mock_parse_toml,
+            self.custom_input_project_data,
+        )
 
-                # Check that read_file was called with the custom path
-                mock_read_file.assert_called_once_with(custom_path)
+        # Check that read_file was called with the custom path
+        mock_read_file.assert_called_once_with(custom_path)
+        mock_call.assert_not_called()
 
 
 if __name__ == '__main__':
