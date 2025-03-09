@@ -1,0 +1,43 @@
+name: Code Coverage
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+  workflow_dispatch:
+
+jobs:
+  coverage:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+      
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+          pip install pytest-cov
+      
+      - name: Run coverage tests for utils module
+        run: python -m devscripts.run_coverage test/test_utils.py yt_dlp.utils
+      
+      - name: Run coverage tests for YoutubeDL module
+        run: python -m devscripts.run_coverage test/test_YoutubeDL.py yt_dlp.YoutubeDL
+      
+      - name: Run coverage tests for devscripts
+        run: python -m devscripts.run_coverage test/devscripts devscripts
+      
+      - name: Archive coverage results
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: |
+            .coverage-reports/html/
+            .coverage-reports/coverage.xml
