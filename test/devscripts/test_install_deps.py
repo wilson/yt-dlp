@@ -78,7 +78,7 @@ class TestInstallDeps(unittest.TestCase):
         finally:
             sys.stdout, sys.stderr = old_out, old_err
 
-    def run_with_argv_and_capture(self, argv, mock_parse_toml=None, project_data=None):
+    def run_with_argv_and_capture(self, argv, mock_parse_toml=None, project_data=None, mock_call=None):
         """
         Run install_deps.main with given argv and return the captured output.
 
@@ -86,9 +86,12 @@ class TestInstallDeps(unittest.TestCase):
             argv: List of command line arguments
             mock_parse_toml: Mock object for parse_toml (if provided)
             project_data: Project data to mock (if provided)
+            mock_call: Mock object for subprocess.call to check if not called with --print flag
 
         Returns:
-            Tuple of (printed_deps, error_output, mock_call)
+            Tuple of (printed_deps, error_output) where:
+                printed_deps: List of dependencies printed to stdout
+                error_output: String of error messages printed to stderr
         """
         if project_data and mock_parse_toml:
             mock_parse_toml.return_value = project_data
@@ -107,7 +110,35 @@ class TestInstallDeps(unittest.TestCase):
                 else:
                     printed_deps = []
 
+                # If --print is in argv and mock_call is provided, assert it wasn't called
+                if mock_call and '--print' in argv:
+                    mock_call.assert_not_called()
+
                 return printed_deps, error_text
+
+    def assert_deps_included(self, deps, expected_deps, msg=None):
+        """
+        Assert that all expected dependencies are included in the deps list.
+
+        Args:
+            deps: List of dependencies to check
+            expected_deps: List of dependencies expected to be present
+            msg: Optional message to display if assertion fails
+        """
+        for dep in expected_deps:
+            self.assertIn(dep, deps, msg or f"Dependency '{dep}' should be included")
+
+    def assert_deps_excluded(self, deps, excluded_deps, msg=None):
+        """
+        Assert that all excluded dependencies are not present in the deps list.
+
+        Args:
+            deps: List of dependencies to check
+            excluded_deps: List of dependencies expected to be absent
+            msg: Optional message to display if assertion fails
+        """
+        for dep in excluded_deps:
+            self.assertNotIn(dep, deps, msg or f"Dependency '{dep}' should be excluded")
 
     @mock.patch('devscripts.install_deps.parse_toml')
     @mock.patch('devscripts.install_deps.read_file')
@@ -120,6 +151,7 @@ class TestInstallDeps(unittest.TestCase):
             ['install_deps.py', '--all', '--print'],
             mock_parse_toml,
             self.extended_project_data,
+            mock_call,
         )
 
         # Check that all dependencies are included:
@@ -127,21 +159,19 @@ class TestInstallDeps(unittest.TestCase):
         self.assertEqual(len(printed_deps), 10)
 
         # Check core dependencies
-        self.assertIn('dep1', printed_deps)
-        self.assertIn('dep2', printed_deps)
+        core_deps = ['dep1', 'dep2']
+        self.assert_deps_included(printed_deps, core_deps)
 
         # Check all optional dependency groups
-        self.assertIn('opt1', printed_deps)
-        self.assertIn('opt2', printed_deps)
-        self.assertIn('test1', printed_deps)
-        self.assertIn('test2', printed_deps)
-        self.assertIn('dev1', printed_deps)
-        self.assertIn('dev2', printed_deps)
-        self.assertIn('extra1', printed_deps)
-        self.assertIn('extra2', printed_deps)
+        default_deps = ['opt1', 'opt2']
+        test_deps = ['test1', 'test2']
+        dev_deps = ['dev1', 'dev2']
+        extra_deps = ['extra1', 'extra2']
 
-        # Call was not made because we used --print
-        mock_call.assert_not_called()
+        self.assert_deps_included(printed_deps, default_deps)
+        self.assert_deps_included(printed_deps, test_deps)
+        self.assert_deps_included(printed_deps, dev_deps)
+        self.assert_deps_included(printed_deps, extra_deps)
 
     @mock.patch('devscripts.install_deps.parse_toml')
     @mock.patch('devscripts.install_deps.read_file')
@@ -152,27 +182,19 @@ class TestInstallDeps(unittest.TestCase):
             ['install_deps.py', '--all', '--exclude', 'test', '--print'],
             mock_parse_toml,
             self.standard_project_data,
+            mock_call,
         )
 
         # Check that all dependencies except the excluded group are included
         self.assertEqual(len(printed_deps), 6)
 
-        # Check core dependencies
-        self.assertIn('dep1', printed_deps)
-        self.assertIn('dep2', printed_deps)
-
-        # Check included dependency groups
-        self.assertIn('opt1', printed_deps)
-        self.assertIn('opt2', printed_deps)
-        self.assertIn('dev1', printed_deps)
-        self.assertIn('dev2', printed_deps)
+        # Check core dependencies and included dependency groups
+        included_deps = ['dep1', 'dep2', 'opt1', 'opt2', 'dev1', 'dev2']
+        self.assert_deps_included(printed_deps, included_deps)
 
         # Check excluded dependency group
-        self.assertNotIn('test1', printed_deps)
-        self.assertNotIn('test2', printed_deps)
-
-        # Call was not made because we used --print
-        mock_call.assert_not_called()
+        excluded_deps = ['test1', 'test2']
+        self.assert_deps_excluded(printed_deps, excluded_deps)
 
     def test_mutually_exclusive_flags(self):
         """Test that --all and --only-optional are mutually exclusive."""
@@ -191,14 +213,12 @@ class TestInstallDeps(unittest.TestCase):
             ['install_deps.py', '--only-optional', '--print'],
             mock_parse_toml,
             self.standard_project_data,
+            mock_call,
         )
 
         # Check that a warning was printed to stderr
         self.assertIn('Warning: --only-optional has no effect without specifying groups', error_output)
         self.assertIn('Use --all instead', error_output)
-
-        # Call was not made because we used --print
-        mock_call.assert_not_called()
 
     @mock.patch('devscripts.install_deps.parse_toml')
     @mock.patch('devscripts.install_deps.read_file')
@@ -209,27 +229,16 @@ class TestInstallDeps(unittest.TestCase):
             ['install_deps.py', '--only-optional', '--include', 'test', '--print'],
             mock_parse_toml,
             self.standard_project_data,
+            mock_call,
         )
 
-        # Check that only the specified optional dependencies are included
-        # Core dependencies should be excluded
-        self.assertNotIn('dep1', printed_deps)
-        self.assertNotIn('dep2', printed_deps)
-
-        # Default group should be excluded
-        self.assertNotIn('opt1', printed_deps)
-        self.assertNotIn('opt2', printed_deps)
-
         # Specified optional group should be included
-        self.assertIn('test1', printed_deps)
-        self.assertIn('test2', printed_deps)
+        included_deps = ['test1', 'test2']
+        self.assert_deps_included(printed_deps, included_deps)
 
-        # Non-specified optional group should be excluded
-        self.assertNotIn('dev1', printed_deps)
-        self.assertNotIn('dev2', printed_deps)
-
-        # Call was not made because we used --print
-        mock_call.assert_not_called()
+        # Core dependencies, default group, and non-specified optional group should be excluded
+        excluded_deps = ['dep1', 'dep2', 'opt1', 'opt2', 'dev1', 'dev2']
+        self.assert_deps_excluded(printed_deps, excluded_deps)
 
     @mock.patch('devscripts.install_deps.parse_toml')
     @mock.patch('devscripts.install_deps.read_file')
@@ -240,24 +249,15 @@ class TestInstallDeps(unittest.TestCase):
             ['install_deps.py', '--include', 'test', '--include', 'dev', '--print'],
             mock_parse_toml,
             self.standard_project_data,
+            mock_call,
         )
 
         # Should include core dependencies, default group, and both specified groups
         self.assertEqual(len(printed_deps), 8)
 
-        # Core dependencies and default group
-        self.assertIn('dep1', printed_deps)
-        self.assertIn('dep2', printed_deps)
-        self.assertIn('opt1', printed_deps)
-        self.assertIn('opt2', printed_deps)
-
-        # Both included groups
-        self.assertIn('test1', printed_deps)
-        self.assertIn('test2', printed_deps)
-        self.assertIn('dev1', printed_deps)
-        self.assertIn('dev2', printed_deps)
-
-        mock_call.assert_not_called()
+        # All dependencies should be included (core, default, test, dev)
+        all_deps = ['dep1', 'dep2', 'opt1', 'opt2', 'test1', 'test2', 'dev1', 'dev2']
+        self.assert_deps_included(printed_deps, all_deps)
 
     @mock.patch('devscripts.install_deps.parse_toml')
     @mock.patch('devscripts.install_deps.read_file')
@@ -280,20 +280,19 @@ class TestInstallDeps(unittest.TestCase):
             ['install_deps.py', '--exclude', 'default', '--print'],
             mock_parse_toml,
             project_data,
+            mock_call,
         )
 
         # Should include only core dependencies
         self.assertEqual(len(printed_deps), 2)
 
-        # Core dependencies
-        self.assertIn('dep1', printed_deps)
-        self.assertIn('dep2', printed_deps)
+        # Core dependencies should be included
+        included_deps = ['dep1', 'dep2']
+        self.assert_deps_included(printed_deps, included_deps)
 
         # Default group should be excluded
-        self.assertNotIn('opt1', printed_deps)
-        self.assertNotIn('opt2', printed_deps)
-
-        mock_call.assert_not_called()
+        excluded_deps = ['opt1', 'opt2']
+        self.assert_deps_excluded(printed_deps, excluded_deps)
 
     @mock.patch('devscripts.install_deps.parse_toml')
     @mock.patch('devscripts.install_deps.read_file')
@@ -315,20 +314,19 @@ class TestInstallDeps(unittest.TestCase):
             ['install_deps.py', '--exclude', 'dep1', '--print'],
             mock_parse_toml,
             project_data,
+            mock_call,
         )
 
         # Should have 3 dependencies (dep2, opt1, opt2)
         self.assertEqual(len(printed_deps), 3)
 
-        # dep1 should be excluded
-        self.assertNotIn('dep1', printed_deps)
-
         # Other dependencies should be included
-        self.assertIn('dep2', printed_deps)
-        self.assertIn('opt1', printed_deps)
-        self.assertIn('opt2', printed_deps)
+        included_deps = ['dep2', 'opt1', 'opt2']
+        self.assert_deps_included(printed_deps, included_deps)
 
-        mock_call.assert_not_called()
+        # dep1 should be excluded
+        excluded_deps = ['dep1']
+        self.assert_deps_excluded(printed_deps, excluded_deps)
 
     @mock.patch('devscripts.install_deps.parse_toml')
     @mock.patch('devscripts.install_deps.read_file')
@@ -352,29 +350,19 @@ class TestInstallDeps(unittest.TestCase):
             ['install_deps.py', '--exclude', 'dep1', '--exclude', 'test', '--exclude', 'dev', '--print'],
             mock_parse_toml,
             project_data,
+            mock_call,
         )
 
         # Should include core dependencies (minus dep1) and default group
         self.assertEqual(len(printed_deps), 4)
 
-        # Check excluded dependency
-        self.assertNotIn('dep1', printed_deps)
+        # Remaining dependencies should be included
+        included_deps = ['dep2', 'dep3', 'opt1', 'opt2']
+        self.assert_deps_included(printed_deps, included_deps)
 
-        # Other core dependencies should be included
-        self.assertIn('dep2', printed_deps)
-        self.assertIn('dep3', printed_deps)
-
-        # Default group should be included
-        self.assertIn('opt1', printed_deps)
-        self.assertIn('opt2', printed_deps)
-
-        # Excluded groups should be excluded
-        self.assertNotIn('test1', printed_deps)
-        self.assertNotIn('test2', printed_deps)
-        self.assertNotIn('dev1', printed_deps)
-        self.assertNotIn('dev2', printed_deps)
-
-        mock_call.assert_not_called()
+        # Excluded dependency and groups should be excluded
+        excluded_deps = ['dep1', 'test1', 'test2', 'dev1', 'dev2']
+        self.assert_deps_excluded(printed_deps, excluded_deps)
 
     @mock.patch('devscripts.install_deps.parse_toml')
     @mock.patch('devscripts.install_deps.read_file')
@@ -385,22 +373,19 @@ class TestInstallDeps(unittest.TestCase):
             ['install_deps.py', '--include', 'test', '--print'],
             mock_parse_toml,
             self.recursive_project_data,
+            mock_call,
         )
 
         # Should include core, default, test, and dev (recursively)
         self.assertEqual(len(printed_deps), 5)
 
         # All dependencies should be included
-        self.assertIn('dep1', printed_deps)
-        self.assertIn('opt1', printed_deps)
-        self.assertIn('test1', printed_deps)
-        self.assertIn('dev1', printed_deps)
-        self.assertIn('dev2', printed_deps)
+        all_deps = ['dep1', 'opt1', 'test1', 'dev1', 'dev2']
+        self.assert_deps_included(printed_deps, all_deps)
 
         # The reference itself should be resolved and not included
-        self.assertNotIn('yt-dlp[dev]', printed_deps)
-
-        mock_call.assert_not_called()
+        excluded_deps = ['yt-dlp[dev]']
+        self.assert_deps_excluded(printed_deps, excluded_deps)
 
     def test_user_flag(self):
         """Test the --user flag is properly recognized."""
@@ -424,11 +409,11 @@ class TestInstallDeps(unittest.TestCase):
             ['install_deps.py', custom_path, '--print'],
             mock_parse_toml,
             self.custom_input_project_data,
+            mock_call,
         )
 
         # Check that read_file was called with the custom path
         mock_read_file.assert_called_once_with(custom_path)
-        mock_call.assert_not_called()
 
 
 if __name__ == '__main__':
