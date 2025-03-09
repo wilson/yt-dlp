@@ -16,92 +16,95 @@ class TestInstallDeps(unittest.TestCase):
 
     def setUp(self):
         """Set up test fixtures."""
-        # Common project data with standard dependencies
-        self.standard_project_data = {
-            'project': {
-                'name': 'yt-dlp',
-                'dependencies': ['dep1', 'dep2'],
-                'optional-dependencies': {
+        # Helper method to create project data with configurable dependencies
+        def create_project_data(
+            dependencies=None,
+            optional_deps=None,
+        ):
+            """
+            Create a project data dictionary with customizable dependencies.
+
+            Args:
+                dependencies: List of core dependencies (defaults to ['dep1', 'dep2'])
+                optional_deps: Dictionary of optional dependency groups
+                              (defaults to standard set of default, test, and dev groups)
+
+            Returns:
+                Dictionary with project data structure
+            """
+            if dependencies is None:
+                dependencies = ['dep1', 'dep2']
+
+            if optional_deps is None:
+                optional_deps = {
                     'default': ['opt1', 'opt2'],
                     'test': ['test1', 'test2'],
                     'dev': ['dev1', 'dev2'],
+                }
+
+            return {
+                'project': {
+                    'name': 'yt-dlp',
+                    'dependencies': dependencies,
+                    'optional-dependencies': optional_deps,
                 },
-            },
-        }
+            }
+
+        # Common project data with standard dependencies
+        self.standard_project_data = create_project_data()
 
         # Extended project data with an extra group
-        self.extended_project_data = {
-            'project': {
-                'name': 'yt-dlp',
-                'dependencies': ['dep1', 'dep2'],
-                'optional-dependencies': {
-                    'default': ['opt1', 'opt2'],
-                    'test': ['test1', 'test2'],
-                    'dev': ['dev1', 'dev2'],
-                    'extra': ['extra1', 'extra2'],
-                },
+        self.extended_project_data = create_project_data(
+            optional_deps={
+                'default': ['opt1', 'opt2'],
+                'test': ['test1', 'test2'],
+                'dev': ['dev1', 'dev2'],
+                'extra': ['extra1', 'extra2'],
             },
-        }
+        )
 
         # Project data with recursive dependencies
-        self.recursive_project_data = {
-            'project': {
-                'name': 'yt-dlp',
-                'dependencies': ['dep1'],
-                'optional-dependencies': {
-                    'default': ['opt1'],
-                    'test': ['test1', 'yt-dlp[dev]'],  # test depends on dev
-                    'dev': ['dev1', 'dev2'],
-                },
+        self.recursive_project_data = create_project_data(
+            dependencies=['dep1'],
+            optional_deps={
+                'default': ['opt1'],
+                'test': ['test1', 'yt-dlp[dev]'],  # test depends on dev
+                'dev': ['dev1', 'dev2'],
             },
-        }
+        )
 
         # Simple project data for custom input file test
-        self.custom_input_project_data = {
-            'project': {
-                'name': 'yt-dlp',
-                'dependencies': ['dep1'],
-                'optional-dependencies': {
-                    'default': ['opt1'],
-                },
+        self.custom_input_project_data = create_project_data(
+            dependencies=['dep1'],
+            optional_deps={
+                'default': ['opt1'],
             },
-        }
+        )
 
         # Simplified project data for testing specific dependency exclusion
-        self.simplified_project_data = {
-            'project': {
-                'name': 'yt-dlp',
-                'dependencies': ['dep1', 'dep2'],
-                'optional-dependencies': {
-                    'default': ['opt1', 'opt2'],
-                },
+        self.simplified_project_data = create_project_data(
+            optional_deps={
+                'default': ['opt1', 'opt2'],
             },
-        }
+        )
 
         # Project data for testing default group exclusion
-        self.exclude_default_project_data = {
-            'project': {
-                'name': 'yt-dlp',
-                'dependencies': ['dep1', 'dep2'],
-                'optional-dependencies': {
-                    'default': ['opt1', 'opt2'],
-                    'test': ['test1', 'test2'],
-                },
+        self.exclude_default_project_data = create_project_data(
+            optional_deps={
+                'default': ['opt1', 'opt2'],
+                'test': ['test1', 'test2'],
             },
-        }
+        )
 
         # Project data for testing multiple excludes
-        self.multiple_excludes_project_data = {
-            'project': {
-                'name': 'yt-dlp',
-                'dependencies': ['dep1', 'dep2', 'dep3'],
-                'optional-dependencies': {
-                    'default': ['opt1', 'opt2'],
-                    'test': ['test1', 'test2'],
-                    'dev': ['dev1', 'dev2'],
-                },
+        self.multiple_excludes_project_data = create_project_data(
+            dependencies=['dep1', 'dep2', 'dep3'],
+            optional_deps={
+                'default': ['opt1', 'opt2'],
+                'test': ['test1', 'test2'],
+                'dev': ['dev1', 'dev2'],
             },
-        }
+        )
 
     @contextmanager
     def capture_output(self):
