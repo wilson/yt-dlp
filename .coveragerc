@@ -1,0 +1,11 @@
+[coverage:run]
+source = yt_dlp, devscripts
+omit = */extractor/lazy_extractors.py, */__pycache__/*, */test/*
+
+[coverage:report]
+exclude_lines =
+    pragma: no cover
+    def __repr__
+    raise NotImplementedError
+    if __name__ == .__main__.:
+    pass
