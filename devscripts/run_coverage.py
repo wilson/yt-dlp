@@ -9,7 +9,18 @@
 #   python -m devscripts.run_coverage                         # Test everything
 #   python -m devscripts.run_coverage test/devscripts         # Test devscripts
 #   python -m devscripts.run_coverage test/test_utils.py yt_dlp.utils  # Test specific module
+#   python -m devscripts.run_coverage test/test_utils.py "yt_dlp.utils,yt_dlp.YoutubeDL"  # Test multiple modules
 #   python -m devscripts.run_coverage test -v                 # With verbosity
+#
+# Using hatch:
+#   hatch run hatch-test:run-cov [args]                       # Same arguments as above
+#   hatch test --cover                                        # Run all tests with coverage
+#
+# Important:
+#   - Always run this script from the project root directory
+#   - Test paths are relative to the project root
+#   - Module paths use Python import syntax (with dots)
+#   - Coverage reports are generated in .coverage-reports/
 
 import sys
 import subprocess
