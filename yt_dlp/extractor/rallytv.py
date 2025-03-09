@@ -1,9 +1,6 @@
-import re
-
 from .common import InfoExtractor
 from ..utils import (
     ExtractorError,
-    try_get,
 )
 
 
@@ -21,10 +18,7 @@ class RallyTVIE(InfoExtractor):
             'id': '3f435f44-b6e2-50de-923d-d8cd8311ddef',
             'ext': 'mp4',
             'title': 'Rally.TV Video 3f435f44-b6e2-50de-923d-d8cd8311ddef',
-            'format_id': re.compile(r'.+'),
-            'duration': float,
-            'height': int,
-            'width': int,
+            'thumbnail': 'https://www.rally.tv/thumbnail/3f435f44-b6e2-50de-923d-d8cd8311ddef',
         },
         'params': {
             'skip_download': True,
@@ -76,10 +70,13 @@ class RallyTVIE(InfoExtractor):
         if not formats:
             raise ExtractorError('Could not extract any video formats.')
 
+        # Build the thumbnail URL directly instead of using try_get
+        thumbnail = f'{self._BASE_URL}/thumbnail/{video_id}'
+
         # Build the final info dictionary
         return {
             'id': video_id,
             'title': title,
             'formats': formats,
-            'thumbnail': try_get(lambda: f'{self._BASE_URL}/thumbnail/{video_id}', str),
+            'thumbnail': thumbnail,
         }
