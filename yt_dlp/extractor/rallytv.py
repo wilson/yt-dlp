@@ -1,4 +1,3 @@
-import re
 
 from .common import InfoExtractor
 from ..utils import ExtractorError
@@ -11,7 +10,17 @@ class RallyTVIE(InfoExtractor):
         'info_dict': {
             'id': '3f435f44-b6e2-50de-923d-d8cd8311ddef',
             'ext': 'mp4',
-            'title': re.compile(r'.+'),
+            'title': 'Rally.TV Video 3f435f44-b6e2-50de-923d-d8cd8311ddef',
+        },
+        'params': {
+            'skip_download': True,
+        },
+    }, {
+        'url': 'https://www.rally.tv/video/1a2b3c4d-5e6f-7g8h-9i0j-k1l2m3n4o5p6',
+        'info_dict': {
+            'id': '1a2b3c4d-5e6f-7g8h-9i0j-k1l2m3n4o5p6',
+            'ext': 'mp4',
+            'title': 'Rally.TV Video 1a2b3c4d-5e6f-7g8h-9i0j-k1l2m3n4o5p6',
         },
         'params': {
             'skip_download': True,
@@ -23,11 +32,10 @@ class RallyTVIE(InfoExtractor):
         self.to_screen(f'Extracting video with ID: {video_id}')
 
         # Download webpage for title extraction
-        webpage = self._download_webpage(url, video_id)
-        title = self._html_search_regex(
-            r'<title>([^<]+)</title>', webpage, 'title', default=f'Rally.TV Video {video_id}',
-        )
-        title = re.sub(r'\s*\|\s*Rally\.TV.*$', '', title)
+        # webpage = self._download_webpage(url, video_id)
+        # TODO: Title is set dynamically after playback starts
+        # Possibly we can extract it from one of the playlists.
+        title = f'Rally.TV Video {video_id}'
 
         # Use the direct master playlist URL
         formats = []
