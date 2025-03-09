@@ -74,14 +74,24 @@ def main():
     try:
         result = subprocess.run(cmd, check=True)
 
-        # Generate reports after the test run
-        subprocess.run([
-            'python', '-m', 'coverage', 'html',
-        ], check=True)
+        # Generate reports after the test run in parallel
+        import concurrent.futures
 
-        subprocess.run([
-            'python', '-m', 'coverage', 'xml',
-        ], check=True)
+        def generate_html_report():
+            return subprocess.run([
+                'python', '-m', 'coverage', 'html',
+            ], check=True)
+
+        def generate_xml_report():
+            return subprocess.run([
+                'python', '-m', 'coverage', 'xml',
+            ], check=True)
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
+            html_future = executor.submit(generate_html_report)
+            xml_future = executor.submit(generate_xml_report)
+            # Wait for both tasks to complete
+            concurrent.futures.wait([html_future, xml_future])
 
         print(f'\nCoverage reports saved to {cov_dir.as_posix()}')
         print(f'HTML report: open {cov_dir.as_posix()}/html/index.html')

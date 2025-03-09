@@ -9,7 +9,7 @@ from devscripts import install_deps
 
 
 class TestInstallDeps(unittest.TestCase):
-    
+
     @mock.patch('devscripts.install_deps.parse_toml')
     @mock.patch('devscripts.install_deps.read_file')
     @mock.patch('devscripts.install_deps.subprocess.call')
@@ -22,11 +22,11 @@ class TestInstallDeps(unittest.TestCase):
                 'optional-dependencies': {
                     'default': ['opt1', 'opt2'],
                     'test': ['test1', 'test2'],
-                    'dev': ['dev1', 'dev2']
-                }
-            }
+                    'dev': ['dev1', 'dev2'],
+                },
+            },
         }
-        
+
         # Mock sys.argv to simulate command line arguments
         with mock.patch('sys.argv', ['install_deps.py', '--print']):
             # Redirect stdout to capture the output
@@ -36,13 +36,13 @@ class TestInstallDeps(unittest.TestCase):
             try:
                 output = StringIO()
                 sys.stdout = output
-                
+
                 # Execute the main function
                 install_deps.main()
-                
+
                 # Get the captured output
                 printed_deps = output.getvalue().strip().split('\n')
-                
+
                 # Check that default dependencies are included
                 # 2 from dependencies + default dependencies
                 self.assertEqual(len(printed_deps), 4)
@@ -50,10 +50,10 @@ class TestInstallDeps(unittest.TestCase):
                 self.assertIn('dep2', printed_deps)
                 self.assertIn('opt1', printed_deps)
                 self.assertIn('opt2', printed_deps)
-                
+
             finally:
                 sys.stdout = original_stdout
-        
+
         # Call was not made because we used --print
         mock_call.assert_not_called()
 
