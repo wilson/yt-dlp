@@ -67,6 +67,42 @@ class TestInstallDeps(unittest.TestCase):
             },
         }
 
+        # Simplified project data for testing specific dependency exclusion
+        self.simplified_project_data = {
+            'project': {
+                'name': 'yt-dlp',
+                'dependencies': ['dep1', 'dep2'],
+                'optional-dependencies': {
+                    'default': ['opt1', 'opt2'],
+                },
+            },
+        }
+
+        # Project data for testing default group exclusion
+        self.exclude_default_project_data = {
+            'project': {
+                'name': 'yt-dlp',
+                'dependencies': ['dep1', 'dep2'],
+                'optional-dependencies': {
+                    'default': ['opt1', 'opt2'],
+                    'test': ['test1', 'test2'],
+                },
+            },
+        }
+
+        # Project data for testing multiple excludes
+        self.multiple_excludes_project_data = {
+            'project': {
+                'name': 'yt-dlp',
+                'dependencies': ['dep1', 'dep2', 'dep3'],
+                'optional-dependencies': {
+                    'default': ['opt1', 'opt2'],
+                    'test': ['test1', 'test2'],
+                    'dev': ['dev1', 'dev2'],
+                },
+            },
+        }
+
     @contextmanager
     def capture_output(self):
         """Capture stdout and stderr to StringIO objects"""
@@ -264,22 +300,10 @@ class TestInstallDeps(unittest.TestCase):
     @mock.patch('devscripts.install_deps.subprocess.call')
     def test_exclude_default_group(self, mock_call, mock_read_file, mock_parse_toml):
         """Test --exclude default excludes the default group."""
-        # Modify project data to suit this test
-        project_data = {
-            'project': {
-                'name': 'yt-dlp',
-                'dependencies': ['dep1', 'dep2'],
-                'optional-dependencies': {
-                    'default': ['opt1', 'opt2'],
-                    'test': ['test1', 'test2'],
-                },
-            },
-        }
-
         printed_deps, _ = self.run_with_argv_and_capture(
             ['install_deps.py', '--exclude', 'default', '--print'],
             mock_parse_toml,
-            project_data,
+            self.exclude_default_project_data,
             mock_call,
         )
 
@@ -299,21 +323,10 @@ class TestInstallDeps(unittest.TestCase):
     @mock.patch('devscripts.install_deps.subprocess.call')
     def test_exclude_specific_dependency(self, mock_call, mock_read_file, mock_parse_toml):
         """Test --exclude for a specific dependency excludes only that dependency."""
-        # Simplify project data for this test
-        project_data = {
-            'project': {
-                'name': 'yt-dlp',
-                'dependencies': ['dep1', 'dep2'],
-                'optional-dependencies': {
-                    'default': ['opt1', 'opt2'],
-                },
-            },
-        }
-
         printed_deps, _ = self.run_with_argv_and_capture(
             ['install_deps.py', '--exclude', 'dep1', '--print'],
             mock_parse_toml,
-            project_data,
+            self.simplified_project_data,
             mock_call,
         )
 
@@ -333,23 +346,10 @@ class TestInstallDeps(unittest.TestCase):
     @mock.patch('devscripts.install_deps.subprocess.call')
     def test_multiple_excludes(self, mock_call, mock_read_file, mock_parse_toml):
         """Test multiple --exclude flags exclude all specified dependencies/groups."""
-        # Add an extra core dependency for this test
-        project_data = {
-            'project': {
-                'name': 'yt-dlp',
-                'dependencies': ['dep1', 'dep2', 'dep3'],
-                'optional-dependencies': {
-                    'default': ['opt1', 'opt2'],
-                    'test': ['test1', 'test2'],
-                    'dev': ['dev1', 'dev2'],
-                },
-            },
-        }
-
         printed_deps, _ = self.run_with_argv_and_capture(
             ['install_deps.py', '--exclude', 'dep1', '--exclude', 'test', '--exclude', 'dev', '--print'],
             mock_parse_toml,
-            project_data,
+            self.multiple_excludes_project_data,
             mock_call,
         )
 
