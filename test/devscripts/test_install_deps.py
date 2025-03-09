@@ -6,8 +6,11 @@ import unittest
 from unittest import mock
 from io import StringIO
 from contextlib import contextmanager
+from pathlib import Path
 
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+# Add project root directory to Python path
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(PROJECT_ROOT))
 
 from devscripts import install_deps
 
