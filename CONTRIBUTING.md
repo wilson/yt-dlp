@@ -149,6 +149,12 @@ If you plan on contributing to `yt-dlp`, best practice is to start by running th
 $ hatch run setup
 ```
 
+To install all optional dependencies for development (useful for testing and running the full validation suite):
+
+```shell
+$ python -m devscripts.install_deps --all -e
+```
+
 The above command will install a `pre-commit` hook so that required checks/fixes (linting, formatting) will run automatically before each commit. If any code needs to be linted or formatted, then the commit will be blocked and the necessary changes will be made; you should review all edits and re-commit the fixed version.
 
 After this you can use `hatch shell` to enable a virtual environment that has `yt-dlp` and its development dependencies installed.

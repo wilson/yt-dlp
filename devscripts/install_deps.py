@@ -17,7 +17,10 @@ from devscripts.utils import read_file
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description='Install dependencies for yt-dlp')
+    parser = argparse.ArgumentParser(
+        description='Install dependencies for yt-dlp',
+        epilog='Example usage:\n  python -m devscripts.install_deps --all -e test  # Install all dependencies except test group\n  python -m devscripts.install_deps -i dev -i test  # Install development and test dependencies\n  python -m devscripts.install_deps --only-optional -i dev -i test  # Install only dev and test dependencies',
+        formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument(
         'input', nargs='?', metavar='TOMLFILE', default=Path(__file__).parent.parent / 'pyproject.toml',
         help='input file (default: %(default)s)')
@@ -27,9 +30,13 @@ def parse_args():
     parser.add_argument(
         '-i', '--include', metavar='GROUP', action='append',
         help='include an optional dependency group')
-    parser.add_argument(
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument(
+        '-a', '--all', action='store_true',
+        help='include all optional dependency groups')
+    group.add_argument(
         '-o', '--only-optional', action='store_true',
-        help='only install optional dependencies')
+        help='only install specified optional dependencies (excludes core dependencies and default group)')
     parser.add_argument(
         '-p', '--print', action='store_true',
         help='only print requirements to stdout')
@@ -59,10 +66,31 @@ def main():
         if 'default' not in excludes:  # `--exclude default` should exclude entire 'default' group
             targets.extend(yield_deps(optional_groups['default']))
 
-    for include in filter(None, map(optional_groups.get, args.include or [])):
-        targets.extend(yield_deps(include))
+    # If --all is specified, include all optional dependency groups
+    if args.all:
+        for group_name, group in optional_groups.items():
+            if group_name != 'default' and group_name not in excludes:
+                targets.extend(yield_deps(group))
+    else:
+        # Check if --only-optional is used without --include flags
+        if args.only_optional and not args.include:
+            import sys
+            print('Warning: --only-optional has no effect without specifying groups with --include',
+                  '         Use --all instead to include all optional dependency groups.',
+                  file=sys.stderr, sep='\n')
 
-    targets = [t for t in targets if re.match(r'[\w-]+', t).group(0).lower() not in excludes]
+        for include in filter(None, map(optional_groups.get, args.include or [])):
+            targets.extend(yield_deps(include))
+
+    # Remove duplicates and excluded dependencies
+    seen = set()
+    unique_targets = []
+    for t in targets:
+        base_name = re.match(r'[\w-]+', t).group(0).lower()
+        if base_name not in excludes and t not in seen:
+            seen.add(t)
+            unique_targets.append(t)
+    targets = unique_targets
 
     if args.print:
         for target in targets:
